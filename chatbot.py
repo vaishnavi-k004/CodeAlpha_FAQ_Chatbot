@@ -42,8 +42,8 @@ faq_data = {
 
 def nlp_preprocess(text):
     text = text.lower()
-    tokens = word_tokenize(text) # Tokenization requirement
-    cleaned = [re.sub(r'[^\w\s]', '', t) for t in tokens if t.strip()] # Cleaning requirement
+    tokens = word_tokenize(text) # Tokenization
+    cleaned = [re.sub(r'[^\w\s]', '', t) for t in tokens if t.strip()] # Cleaning
     return " ".join(cleaned)
 
 class AlphaIntelBot:
@@ -53,21 +53,20 @@ class AlphaIntelBot:
         self.root.geometry("500x650")
         self.root.configure(bg="#1e1e1e")
 
-        # 1. NAVIGATION HEADER
+        # UI Header
         tk.Label(root, text="AlphaIntel AI Assistant", font=("Helvetica", 16, "bold"), bg="#1e1e1e", fg="#0078d4").pack(pady=10)
         tk.Label(root, text="Ask anything related to Internship", font=("Arial", 9), bg="#1e1e1e", fg="#aaaaaa").pack()
 
-        # 2. CHAT HISTORY AREA
+        # Chat History
         self.chat_display = scrolledtext.ScrolledText(root, state='disabled', bg="#2d2d2d", fg="white", font=("Arial", 11), relief="flat")
         self.chat_display.pack(padx=15, pady=10, fill=tk.BOTH, expand=True)
 
-        # 3. SPECIFICATION BOX (User Guidance)
+        # Guidance
         tk.Label(root, text="TYPE YOUR QUESTION BELOW:", font=("Arial", 10, "bold"), bg="#1e1e1e", fg="#0078d4").pack(anchor="w", padx=15)
 
         input_frame = tk.Frame(root, bg="#1e1e1e")
         input_frame.pack(fill=tk.X, padx=15, pady=(5, 20))
 
-        # 4. ENHANCED INPUT FIELD
         self.user_input = tk.Entry(input_frame, font=("Arial", 12), bg="#3d3d3d", fg="white", insertbackground="white", relief="flat")
         self.user_input.pack(side=tk.LEFT, fill=tk.X, expand=True, ipady=10)
         self.user_input.bind("<Return>", lambda e: self.get_response())
@@ -86,26 +85,29 @@ class AlphaIntelBot:
     def get_response(self):
         user_text = self.user_input.get().strip()
         if not user_text: return
+        
         self.log("You", user_text)
         self.user_input.delete(0, tk.END)
 
-        # NLP Matching Logic
+        # 1. Prepare data for vectorization
         questions = list(faq_data.keys())
         processed_qs = [nlp_preprocess(q) for q in questions]
         processed_user = nlp_preprocess(user_text)
 
+        # 2. Convert text to numerical vectors
         vectorizer = TfidfVectorizer()
         tfidf = vectorizer.fit_transform(processed_qs + [processed_user])
         
-        # Cosine Similarity Matching
+        # 3. Calculate similarity score
         scores = cosine_similarity(tfidf[-1], tfidf[:-1])
         idx = scores.argmax()
+        best_score = scores[0][idx]
         
-        # Display best match
-        if scores[0][idx] > 0.35:
+        # --- THE FIX: Higher threshold for fallback ---
+        if best_score > 0.4: # Increased from 0.3 to 0.4 to filter out random questions
             response = faq_data[questions[idx]]
         else:
-            response = "I'm not sure about that. Please check your official offer letter for specific details."
+            response = "I'm sorry, I specialize in CodeAlpha internship details. I don't have information on that specific topic like weather or general news."
         
         self.log("AlphaIntel", response)
 
